@@ -45,10 +45,10 @@ class SSD1306(framebuf.FrameBuffer):
             0x00,  # horizontal
             # resolution and layout
             SET_DISP_START_LINE | 0x00,
-            SET_SEG_REMAP | 0x01,  # column addr 127 mapped to SEG0
+            SET_SEG_REMAP | 0x00,  # column addr 0 mapped to SEG0
             SET_MUX_RATIO,
             self.height - 1,
-            SET_COM_OUT_DIR | 0x08,  # scan from COM[N] to COM0
+            SET_COM_OUT_DIR | 0x00,  # scan from COM0 to COM[N]
             SET_DISP_OFFSET,
             0x00,
             SET_COM_PIN_CFG,

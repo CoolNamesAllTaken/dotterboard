@@ -14,8 +14,8 @@ class DotterBoard:
     SLOT_SENSOR_I_PIN = 16
     SLOT_SENSOR_Q_PIN = 15
 
-    BTN_UP_PIN = 9
-    BTN_DN_PIN = 8
+    BTN_UP_PIN = 6
+    BTN_DN_PIN = 7
 
     components_per_sprocket_hole = 1
     sprocket_holes_per_component = -1
@@ -28,6 +28,8 @@ class DotterBoard:
         self.btn_up = Pin(self.BTN_UP_PIN, Pin.IN, Pin.PULL_UP)
         self.btn_dn = Pin(self.BTN_DN_PIN, Pin.IN, Pin.PULL_UP)
         self.component_count = 0
+        self._btn_up_prev = 1
+        self._btn_dn_prev = 1
 
     def draw_screen(self):
         self.oled.fill(0)
@@ -140,5 +142,42 @@ class DotterBoard:
             self._draw_circle(i * hole_pitch + hole_pitch // 2, hole_cy, hole_r)
 
 
+    def _pitch_up(self):
+        """Increase component density: more components per sprocket hole."""
+        if self.sprocket_holes_per_component > 0:
+            if self.sprocket_holes_per_component == 2:
+                # Cross back to components_per_sprocket_hole mode
+                self.components_per_sprocket_hole = 1
+                self.sprocket_holes_per_component = -1
+            else:
+                self.sprocket_holes_per_component -= 1
+        else:
+            self.components_per_sprocket_hole += 1
+
+    def _pitch_dn(self):
+        """Decrease component density: fewer components per sprocket hole."""
+        if self.components_per_sprocket_hole > 0:
+            if self.components_per_sprocket_hole == 1:
+                # Cross into sprocket_holes_per_component mode
+                self.sprocket_holes_per_component = 2
+                self.components_per_sprocket_hole = -1
+            else:
+                self.components_per_sprocket_hole -= 1
+        else:
+            self.sprocket_holes_per_component += 1
+
     def update(self):
+        btn_up = self.btn_up.value()
+        btn_dn = self.btn_dn.value()
+
+        # print("btn_up={}, btn_dn={}".format(btn_up, btn_dn))
+
+        if self._btn_up_prev and not btn_up:   # falling edge = press
+            self._pitch_up()
+        if self._btn_dn_prev and not btn_dn:
+            self._pitch_dn()
+
+        self._btn_up_prev = btn_up
+        self._btn_dn_prev = btn_dn
+
         self.draw_screen()
