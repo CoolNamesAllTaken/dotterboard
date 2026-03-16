@@ -11,8 +11,8 @@ class DotterBoard:
     OLED_I2C_SDA_PIN = 0
     OLED_I2C_SCL_PIN = 1
 
-    SLOT_SENSOR_I_PIN = 16
-    SLOT_SENSOR_Q_PIN = 15
+    SLOT_SENSOR_I_PIN = 12
+    SLOT_SENSOR_Q_PIN = 11
 
     BTN_UP_PIN = 6
     BTN_DN_PIN = 7
@@ -28,8 +28,18 @@ class DotterBoard:
         self.btn_up = Pin(self.BTN_UP_PIN, Pin.IN, Pin.PULL_UP)
         self.btn_dn = Pin(self.BTN_DN_PIN, Pin.IN, Pin.PULL_UP)
         self.component_count = 0
-        self._btn_up_prev = 1
-        self._btn_dn_prev = 1
+        self._hole_count = 0      # quarter-holes (4 counts per sprocket hole), written by ISR
+        self._sub_hole = 0        # carry for quarter-hole → whole-hole conversion
+        self._hole_remainder = 0  # partial component accumulator (holes/cmp mode)
+        self._btn_up_held = False
+        self._btn_dn_held = False
+        self._both_held = False
+        self._reset_consumed = False
+
+        change_trigger = Pin.IRQ_RISING | Pin.IRQ_FALLING
+
+        self.slot_sensor_i.irq(trigger=change_trigger, handler=self._encoder_isr)
+        self.slot_sensor_q.irq(trigger=change_trigger, handler=self._encoder_isr)
 
     def draw_screen(self):
         self.oled.fill(0)
@@ -142,11 +152,29 @@ class DotterBoard:
             self._draw_circle(i * hole_pitch + hole_pitch // 2, hole_cy, hole_r)
 
 
+    def _encoder_isr(self, pin):
+        i = not self.slot_sensor_i.value()
+        q = not self.slot_sensor_q.value()
+        if pin is self.slot_sensor_i:
+            # I changed: forward if I != Q
+            if i != q:
+                self._hole_count += 1
+            else:
+                self._hole_count -= 1
+        else:
+            # Q changed: forward if I == Q
+            if i == q:
+                self._hole_count += 1
+            else:
+                self._hole_count -= 1
+
+
+
     def _pitch_up(self):
         """Increase component density: more components per sprocket hole."""
+        self._hole_remainder = 0
         if self.sprocket_holes_per_component > 0:
             if self.sprocket_holes_per_component == 2:
-                # Cross back to components_per_sprocket_hole mode
                 self.components_per_sprocket_hole = 1
                 self.sprocket_holes_per_component = -1
             else:
@@ -156,9 +184,9 @@ class DotterBoard:
 
     def _pitch_dn(self):
         """Decrease component density: fewer components per sprocket hole."""
+        self._hole_remainder = 0
         if self.components_per_sprocket_hole > 0:
             if self.components_per_sprocket_hole == 1:
-                # Cross into sprocket_holes_per_component mode
                 self.sprocket_holes_per_component = 2
                 self.components_per_sprocket_hole = -1
             else:
@@ -167,17 +195,56 @@ class DotterBoard:
             self.sprocket_holes_per_component += 1
 
     def update(self):
+        # --- Encoder: convert accumulated quarter-holes to components ---
+        self._sub_hole += self._hole_count
+        self._hole_count = 0
+        holes = int(self._sub_hole / 4)  # truncate toward zero
+        self._sub_hole -= holes * 4
+        if holes:
+            if self.components_per_sprocket_hole > 0:
+                self.component_count += holes * self.components_per_sprocket_hole
+            else:
+                self._hole_remainder += holes
+                n = self.sprocket_holes_per_component
+                delta = int(self._hole_remainder / n)  # truncate toward zero
+                self._hole_remainder -= delta * n
+                self.component_count += delta
+
+        # --- Buttons: pitch change on release, or reset if both were held ---
         btn_up = self.btn_up.value()
         btn_dn = self.btn_dn.value()
 
-        # print("btn_up={}, btn_dn={}".format(btn_up, btn_dn))
+        up_fell = not self._btn_up_held and not btn_up  # press
+        up_rose = self._btn_up_held and btn_up          # release
+        dn_fell = not self._btn_dn_held and not btn_dn
+        dn_rose = self._btn_dn_held and btn_dn
 
-        if self._btn_up_prev and not btn_up:   # falling edge = press
-            self._pitch_up()
-        if self._btn_dn_prev and not btn_dn:
-            self._pitch_dn()
+        if up_fell:
+            self._btn_up_held = True
+        if dn_fell:
+            self._btn_dn_held = True
+        if self._btn_up_held and self._btn_dn_held:
+            self._both_held = True
 
-        self._btn_up_prev = btn_up
-        self._btn_dn_prev = btn_dn
+        if up_rose:
+            if self._both_held:
+                self.component_count = 0
+                self._both_held = False
+                self._reset_consumed = True
+            elif not self._reset_consumed:
+                self._pitch_up()
+            self._btn_up_held = False
+
+        if dn_rose:
+            if self._both_held:
+                self.component_count = 0
+                self._both_held = False
+                self._reset_consumed = True
+            elif not self._reset_consumed:
+                self._pitch_dn()
+            self._btn_dn_held = False
+
+        if not self._btn_up_held and not self._btn_dn_held:
+            self._reset_consumed = False
 
         self.draw_screen()
