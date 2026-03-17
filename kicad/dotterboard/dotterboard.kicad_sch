@@ -1592,6 +1592,16 @@
 	)
 	(wire
 		(pts
+			(xy 106.68 144.78) (xy 105.41 144.78)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "19ca58bd-f9fb-4163-9e7a-94573b6f4cea")
+	)
+	(wire
+		(pts
 			(xy 78.74 68.58) (xy 95.25 68.58)
 		)
 		(stroke
@@ -1669,6 +1679,16 @@
 			(type default)
 		)
 		(uuid "74a2fbb4-7125-483b-bf0e-0ded4db713f1")
+	)
+	(wire
+		(pts
+			(xy 83.82 124.46) (xy 95.25 124.46)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7ffc8296-7c58-487c-9167-d80e8c44c5d3")
 	)
 	(wire
 		(pts
@@ -1762,6 +1782,16 @@
 	)
 	(wire
 		(pts
+			(xy 83.82 144.78) (xy 95.25 144.78)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a724ab09-5461-4c04-87ac-c6c1bc064dec")
+	)
+	(wire
+		(pts
 			(xy 176.53 68.58) (xy 196.85 68.58)
 		)
 		(stroke
@@ -1789,6 +1819,16 @@
 			(type default)
 		)
 		(uuid "d457e443-68df-4252-8994-84196656780d")
+	)
+	(wire
+		(pts
+			(xy 106.68 146.05) (xy 106.68 144.78)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d664af22-a77a-45ef-b232-ff39a224e13a")
 	)
 	(wire
 		(pts
@@ -6845,7 +6885,7 @@
 			"/9OmRP/TpkT/06ZE/9OmRP/TpkT/vJVD/4FqQf9JQT7/LCw9/ywsPf8sLD3/LA=="
 		)
 	)
-	(label "BTN_SET"
+	(label "BTN_UP"
 		(at 78.74 66.04 0)
 		(effects
 			(font
@@ -6895,6 +6935,16 @@
 		)
 		(uuid "41eaa606-e0e7-4e54-a251-3d6e736a13c0")
 	)
+	(label "BTN_UP"
+		(at 83.82 124.46 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "8fa32d6c-4e91-48ec-8112-84b98ad8350b")
+	)
 	(label "SLOT_SENSOR_I"
 		(at 78.74 83.82 0)
 		(effects
@@ -6925,6 +6975,16 @@
 		)
 		(uuid "bc7e7a84-ea9b-491d-abc0-a0977d24f4e6")
 	)
+	(label "BTN_DN"
+		(at 83.82 144.78 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "caac68ef-4459-457b-b143-963c20ec4380")
+	)
 	(label "OLED_I2C_SCL"
 		(at 179.07 100.33 0)
 		(effects
@@ -6935,7 +6995,7 @@
 		)
 		(uuid "f22c567f-963c-44c7-9ecc-eb54dca99a2d")
 	)
-	(label "BTN_CLR"
+	(label "BTN_DN"
 		(at 78.74 68.58 0)
 		(effects
 			(font
@@ -7622,6 +7682,72 @@
 	)
 	(symbol
 		(lib_id "power:GND")
+		(at 106.68 146.05 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "aefbc998-50c8-4298-b1ad-2c9422b85367")
+		(property "Reference" "#PWR08"
+			(at 106.68 152.4 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 106.68 151.13 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 106.68 146.05 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 106.68 146.05 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 106.68 146.05 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "fa9194a8-8a3e-4327-b0a6-dc940cb94bce")
+		)
+		(instances
+			(project "dotterboard"
+				(path "/5dba747f-0eb9-4b42-8c41-dd2ca3b3e1d8"
+					(reference "#PWR08")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
 		(at 195.0532 49.53 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -7825,6 +7951,74 @@
 			(project ""
 				(path "/5dba747f-0eb9-4b42-8c41-dd2ca3b3e1d8"
 					(reference "J1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Switch:SW_Push")
+		(at 100.33 144.78 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "f323f0b7-9953-488e-bef1-2053e9d69a52")
+		(property "Reference" "SW2"
+			(at 100.33 137.16 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "SW_Push"
+			(at 100.33 139.7 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 100.33 139.7 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 100.33 139.7 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Push button switch, generic, two pins"
+			(at 100.33 144.78 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "242c3f4f-8789-4079-ac8d-c327f702a9cc")
+		)
+		(pin "2"
+			(uuid "7bae45b4-15ef-438c-a525-58e32f09812d")
+		)
+		(instances
+			(project "dotterboard"
+				(path "/5dba747f-0eb9-4b42-8c41-dd2ca3b3e1d8"
+					(reference "SW2")
 					(unit 1)
 				)
 			)
