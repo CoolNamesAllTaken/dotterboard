@@ -1,24 +1,30 @@
 import rp2
 from machine import Pin, I2C
+import machine
+import micropython
 from ssd1306 import SSD1306_I2C
 
 
 @rp2.asm_pio()
 def _quadrature_encoder_prog():
-    label("again")
+    # Polls both encoder pins continuously.
+    # Pushes the 2-bit AB state to the FIFO only when it changes.
+    # noblock means the SM never stalls even if the FIFO fills temporarily.
+    # The CPU IRQ handler drains the FIFO and decodes direction.
+    label("poll")
     mov(isr, null)
     in_(pins, 2)
     mov(x, isr)
     jmp(x_not_y, "changed")
-    jmp("again")
+    jmp("poll")
     label("changed")
-    push(noblock)
-    irq(noblock, rel(0))    # signal CPU to drain FIFO; does not stall SM
-    mov(y, x)
-    jmp("again")
+    push(noblock)           # push new 2-bit state; drops only if FIFO full
+    irq(noblock, rel(0))    # wake CPU to drain FIFO promptly; does not stall SM
+    mov(y, x)               # update previous state in Y
+    jmp("poll")
 
 
-VERSION_STRING = "0.1.0"
+VERSION_STRING = "0.1.2"
 
 
 class DotterBoard:
@@ -43,7 +49,7 @@ class DotterBoard:
         self._encoder_sm = rp2.StateMachine(
             0,
             _quadrature_encoder_prog,
-            freq=125_000_000,  # PIO runs at system clock speed; 125MHz is the max for stable operation
+            freq=125_000_000,  # PIO runs at system clock speed; 125MHz is max for stable operation
             in_base=Pin(self.SLOT_SENSOR_Q_PIN),
         )
         # Re-apply pull-ups after SM init resets pad config
@@ -51,12 +57,25 @@ class DotterBoard:
         Pin(self.SLOT_SENSOR_I_PIN, Pin.IN, Pin.PULL_UP)
 
         self._pio_prev_state = 0
+        # _sub_hole is written only from IRQ context and read/cleared
+        # atomically in update() via disable_irq(). This prevents torn
+        # reads when the main loop and IRQ both touch it simultaneously.
         self._sub_hole = 0
         self._hole_remainder = 0
         self.component_count = 0
 
-        # IRQ fires whenever the PIO executes irq(noblock, rel(0))
-        self._encoder_sm.irq(self._encoder_irq)
+        # CRITICAL: hard=True makes this a hard IRQ, which fires immediately
+        # even during C-level operations such as the ~20ms I2C transfer inside
+        # oled.show(). Soft IRQs (the default) are only checked at Python
+        # bytecode boundaries and are completely blocked during oled.show(),
+        # causing the 4-deep PIO FIFO to overflow and silently drop transitions
+        # via push(noblock) on every screen update. hard=True eliminates that
+        # blackout window entirely.
+        #
+        # Hard IRQ handlers must not allocate memory. This handler qualifies:
+        # all operations are on small ints (no heap allocation) and the
+        # @micropython.native decorator keeps execution fast.
+        self._encoder_sm.irq(self._encoder_irq, hard=True)
         self._encoder_sm.active(1)
 
         self.btn_up = Pin(self.BTN_UP_PIN, Pin.IN, Pin.PULL_UP)
@@ -66,10 +85,17 @@ class DotterBoard:
         self._both_held = False
         self._reset_consumed = False
 
+    @micropython.native
     def _encoder_irq(self, sm):
         # Drain the entire FIFO on every IRQ. The PIO raises one IRQ per
         # state change, but multiple transitions may have queued if we were
         # briefly delayed, so always loop until empty.
+        #
+        # @micropython.native compiles this to ARM Thumb-2 machine code,
+        # keeping execution time short -- important for a hard IRQ handler.
+        #
+        # Direction decoding uses the standard Gray-code rule:
+        #   forward if (prev_B XOR curr_A) == 1
         while sm.rx_fifo():
             curr = sm.get() & 0x3
             if (self._pio_prev_state & 1) ^ (curr >> 1):
@@ -78,10 +104,30 @@ class DotterBoard:
                 self._sub_hole -= 1
             self._pio_prev_state = curr
 
+    def _atomic_take_sub_hole(self):
+        # Snapshot and zero _sub_hole with IRQs disabled to prevent a torn
+        # read: without this, update() could read a partial value while the
+        # IRQ handler is mid-increment.
+        state = machine.disable_irq()
+        val = self._sub_hole
+        self._sub_hole = 0
+        machine.enable_irq(state)
+        return val
+
     def update(self):
-        # Convert accumulated quarter-hole counts into components.
-        holes = int(self._sub_hole / 4)
-        self._sub_hole -= holes * 4
+        # Atomically take the accumulated quarter-hole ticks.
+        sub = self._atomic_take_sub_hole()
+
+        # Convert quarter-hole counts into whole holes.
+        holes = int(sub / 4)
+        # The fractional remainder (0-3 quarter-holes) must be preserved
+        # across update() calls rather than discarded, otherwise we
+        # accumulate a systematic under-count at any pitch setting.
+        remainder = sub - holes * 4
+        state = machine.disable_irq()
+        self._sub_hole += remainder
+        machine.enable_irq(state)
+
         if holes:
             if self.components_per_sprocket_hole > 0:
                 self.component_count += holes * self.components_per_sprocket_hole
